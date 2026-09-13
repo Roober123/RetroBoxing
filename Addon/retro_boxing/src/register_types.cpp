@@ -1,6 +1,7 @@
 #include "register_types.hpp"
 
 #include "retro_boxing_example.hpp"
+#include "active_ragdoll_pd.hpp"
 
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
@@ -13,6 +14,7 @@ void initialize_retro_boxing_module(ModuleInitializationLevel p_level) {
 	}
 
 	GDREGISTER_CLASS(RetroBoxingExample);
+	GDREGISTER_CLASS(ActiveRagdollPD3D);
 }
 
 void uninitialize_retro_boxing_module(ModuleInitializationLevel p_level) {
