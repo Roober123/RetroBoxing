@@ -47,3 +47,4 @@ mesh = SubResource("PlaneMesh_ray1q")
 transform = Transform3D(1, 0, 0, 0, 0.9491475, 0.31483176, 0, -0.31483176, 0.9491475, 0, 1.6788781, 2.4102225)
 
 [node name="ActiveRagdoll" parent="." unique_id=329149381 instance=ExtResource("1_37kl0")]
+isolate_gravity = true

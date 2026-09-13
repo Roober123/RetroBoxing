@@ -1,20 +1,18 @@
 extends Node
-## Opt-in testing controls. Targets are offsets in the reference child-body frame.
-## 1/2: elbows, 3: left arm, 4: left thigh, 5: spine, R: reset targets.
-var controller: ActiveRagdollPD3D
+## R: neutral, T: test, B: boxing, V: velocity feed-forward on/off.
+## 1-4: disturb forearm, arm, thigh, torso. Shift doubles impulse.
+var ragdoll: ActiveRagdoll
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
-	if event.keycode == KEY_R:
-		controller.reset_all_targets()
-		return
-	var bones := {
-		KEY_1: &"mixamorig_LeftForeArm", KEY_2: &"mixamorig_RightForeArm",
-		KEY_3: &"mixamorig_LeftArm", KEY_4: &"mixamorig_LeftUpLeg",
-		KEY_5: &"mixamorig_Spine",
-	}
+	match event.keycode:
+		KEY_R: ragdoll.target_controller.base_pose = ragdoll.neutral_pose
+		KEY_T: ragdoll.target_controller.base_pose = ragdoll.test_pose
+		KEY_B: ragdoll.target_controller.base_pose = ragdoll.boxing_pose
+		KEY_V: ragdoll.target_controller.use_target_velocity = not ragdoll.target_controller.use_target_velocity
+	var bones := {KEY_1: "mixamorig_LeftForeArm", KEY_2: "mixamorig_LeftArm", KEY_3: "mixamorig_LeftUpLeg", KEY_4: "mixamorig_Spine"}
 	if event.keycode in bones:
-		var bone: StringName = bones[event.keycode]
-		controller.set_joint_enabled(bone, true)
-		controller.set_joint_target(bone, Quaternion(Vector3.RIGHT, deg_to_rad(30.0)))
+		for bone in ragdoll.bone_sim.get_children():
+			if bone is PhysicalBone3D and bone.bone_name == bones[event.keycode]:
+				PhysicsServer3D.body_apply_torque_impulse(bone.get_rid(), Vector3.RIGHT * (0.2 if event.shift_pressed else 0.1))

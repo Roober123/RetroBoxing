@@ -7,6 +7,7 @@
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/quaternion.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
 
 namespace godot {
 
@@ -62,6 +63,9 @@ public:
 	
 	void set_joint_enabled(const StringName &bone_name, bool value);
 	void set_joint_parameters(const StringName &bone_name, real_t stiffness, real_t damping, real_t max_torque);
+	bool set_body_profile(const TypedArray<StringName> &bones, real_t response_frequency, real_t damping, real_t max_torque);
+	Quaternion get_joint_reference_rotation(int index) const;
+	Vector3 get_joint_parameters(const StringName &bone_name) const;
 	void reset_joint_target(const StringName &bone_name);
 	
 	void reset_all_targets();

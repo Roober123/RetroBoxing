@@ -19,6 +19,9 @@ bool valid_gain(real_t value) { return std::isfinite(value) && value >= 0; }
 }
 
 void ActiveRagdollPD3D::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_body_profile", "bones", "response_frequency", "damping", "max_torque"), &ActiveRagdollPD3D::set_body_profile);
+	ClassDB::bind_method(D_METHOD("get_joint_reference_rotation", "index"), &ActiveRagdollPD3D::get_joint_reference_rotation);
+	ClassDB::bind_method(D_METHOD("get_joint_parameters", "bone_name"), &ActiveRagdollPD3D::get_joint_parameters);
 	ClassDB::bind_method(D_METHOD("initialize", "skeleton", "simulator"), &ActiveRagdollPD3D::initialize);
 	ClassDB::bind_method(D_METHOD("capture_reference_pose"), &ActiveRagdollPD3D::capture_reference_pose);
 	ClassDB::bind_method(D_METHOD("set_enabled", "value"), &ActiveRagdollPD3D::set_enabled);
@@ -215,3 +218,38 @@ void ActiveRagdollPD3D::set_default_max_torque(real_t value) {
 	default_max_torque = value;
 }
 real_t ActiveRagdollPD3D::get_default_max_torque() const { return default_max_torque; }
+
+Quaternion ActiveRagdollPD3D::get_joint_reference_rotation(int index) const {
+	ERR_FAIL_INDEX_V(index, joints.size(), Quaternion());
+	return joints[index].reference_relative_rotation;
+}
+Vector3 ActiveRagdollPD3D::get_joint_parameters(const StringName &bone_name) const {
+	const int index = find_joint(bone_name);
+	ERR_FAIL_INDEX_V(index, joints.size(), Vector3());
+	return Vector3(joints[index].stiffness, joints[index].damping, joints[index].max_torque);
+}
+bool ActiveRagdollPD3D::set_body_profile(const TypedArray<StringName> &bones, real_t response_frequency, real_t damping, real_t max_torque) {
+	ERR_FAIL_COND_V_MSG(!valid_gain(response_frequency) || !valid_gain(damping) || !valid_gain(max_torque), false, "Profile values must be finite and nonnegative.");
+	// Validate the whole request before changing any joints.
+	Vector<Vector3> gains;
+	for (int i = 0; i < bones.size(); ++i) {
+		const StringName name = bones[i];
+		const int index = find_joint(name);
+		ERR_FAIL_COND_V_MSG(index < 0, false, String("Unknown controlled bone: ") + String(name));
+		auto *child = get_bone(joints[index].child_id);
+		auto *parent = get_bone(joints[index].parent_id);
+		ERR_FAIL_COND_V(!child || !parent, false);
+		// Simple reduced-mass inertia proxy with a 10 cm radius of gyration.
+		// It keeps tuning mass-aware without depending on backend inertia availability.
+		const double a = child->get_mass(), b = parent->get_mass();
+		const double inertia = 0.01 / (1.0 / a + 1.0 / b);
+		const double omega = 6.283185307179586 * response_frequency;
+		Vector3 gain(inertia * omega * omega, 2.0 * damping * inertia * omega, max_torque);
+		ERR_FAIL_COND_V_MSG(!gain.is_finite(), false, "Profile gains overflowed.");
+		gains.push_back(gain);
+	}
+	for (int i = 0; i < bones.size(); ++i) {
+		set_joint_parameters(bones[i], gains[i].x, gains[i].y, gains[i].z);
+	}
+	return true;
+}

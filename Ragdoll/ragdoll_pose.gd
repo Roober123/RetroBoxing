@@ -13,3 +13,32 @@ func apply_to(controller: ActiveRagdollPD3D) -> void:
 			return
 	for index in rotations.size():
 		controller.set_joint_target_by_index(index, rotations[index])
+		controller.set_joint_target_angular_velocity(controller.get_joint_name(index), Vector3.ZERO)
+
+static func neutral(count: int) -> RagdollPose:
+	var pose := RagdollPose.new()
+	pose.rotations.resize(count)
+	pose.rotations.fill(Quaternion.IDENTITY)
+	return pose
+
+func is_valid(count: int) -> bool:
+	if rotations.size() != count:
+		return false
+	for q in rotations:
+		if not q.is_finite() or q.length_squared() < 1e-12:
+			return false
+	return true
+
+func blended(other: RagdollPose, weight: float) -> RagdollPose:
+	assert(is_valid(rotations.size()) and other.is_valid(rotations.size()))
+	var pose := neutral(rotations.size())
+	for i in rotations.size():
+		pose.rotations[i] = rotations[i].normalized().slerp(other.rotations[i].normalized(), clampf(weight, 0, 1))
+	return pose
+
+func composed(offset: RagdollPose) -> RagdollPose:
+	assert(is_valid(rotations.size()) and offset.is_valid(rotations.size()))
+	var pose := neutral(rotations.size())
+	for i in rotations.size():
+		pose.rotations[i] = (rotations[i].normalized() * offset.rotations[i].normalized()).normalized()
+	return pose

@@ -1,58 +1,118 @@
 # Active ragdoll PD
 
-Build with `scons`, then run `test.tscn`. The scene starts with only
-`mixamorig_LeftForeArm` driven. The hips have no motor. Falling is expected.
+Build with `scons`, then run `test.tscn`. All 19 joints are enabled by default;
+the hips have no motor. Gravity is disabled to isolate pose control. Set
+`isolate_gravity = false` to restore gravity; this system does not balance yet.
+The character meshes are visible so the targets can be inspected directly.
 
-On the ActiveRagdoll inspector, enable `debug_targets`: keys 1/2 bend the elbows,
-3 targets the left arm, 4 the left thigh, 5 the spine, and R resets all targets.
-Each numbered key also enables that joint. These are simple 30-degree body-local
-X offsets, not anatomically calibrated poses. Clear `motor_bones` to enable all
-19 discovered joints; per-region tuning is still needed for useful full-body control.
+## Controls
 
-`active_ragdoll.gd` applies the existing collision fix, creates the controller,
-sets defaults, initializes joints, captures the reference pose, starts simulation,
-then enables PD. Initialize/capture before simulation, and reinitialize after
-changing the skeleton. Joint indices follow ascending skeleton bone IDs. Discovery
-uses direct physical parents; bones with no physical parent or no joint are skipped.
+- T: full-body test pose (the initial pose).
+- B: boxing stance, with bent knees and hands beside the head.
+- R: neutral reference pose.
+- V: toggle calculated target angular velocity for comparison.
+- 1 / 2 / 3 / 4: torque impulse on left forearm / upper arm / thigh / spine.
+- Shift + number: twice the impulse.
 
-Targets are normalized quaternion offsets: `desired = reference * target`.
-Identity holds the captured relative body orientation, including body offsets.
-The target offset axes are the reference child-body axes. Orientation error lives
-in the parent-body frame and is rotated to world space before applying torque.
-`set_joint_target_angular_velocity(name, velocity)` accepts parent-body-local
-radians/second. Angular velocity feedback is child minus parent in world space.
-Torque is applied once per 120 Hz physics tick, without multiplying by delta,
-using equal and opposite `PhysicsServer3D.body_apply_torque` calls.
+Set `debug_targets = false` to disable these controls. An empty `motor_bones`
+array enables all joints; a populated array isolates selected motors.
 
-The name-based API supports targets, strength, enabling individual joints,
-angular velocity targets, and `set_joint_parameters(name, stiffness, damping,
-max_torque)`. Defaults are copied during initialization; use joint parameters
-to tune an initialized controller. Gains, strength, and torque limits must be
-finite and nonnegative. Zero strength or torque limit disables motor output.
-Reset methods clear both rotation offsets and target angular velocities.
+## Body profiles
 
-For indexed callers, use `get_joint_count()`, `get_joint_name(index)` and
-`set_joint_target_by_index(index, quaternion)`. `get_controlled_bones()` includes
-all discovered joints, even individually disabled ones. `RagdollPose` is just
-an ordered quaternion array and `apply_to(controller)`; use it with the same
-skeleton ordering. Compose pose and residual offsets before passing the target.
+`ActiveRagdoll` owns the bone groups and calls:
+
+```gdscript
+pd_controller.set_body_profile(
+    [&"mixamorig_LeftArm", &"mixamorig_LeftForeArm"],
+    2.0, # response frequency in Hz
+    1.0, # damping ratio
+    0.5  # maximum torque in Nm
+)
+```
+
+Profiles configure initialized joints, without changing targets, enabled state,
+or strength. The whole request is validated before any joint is changed.
+Unknown names (including the unmotorized hips) produce an error naming the bone
+and return false. Values must be finite and nonnegative. Empty arrays are a no-op.
+Reapply profiles after reinitializing the controller.
+
+The initial inertia proxy is reduced body mass times a squared 10 cm radius of
+gyration: `I = 0.01 / (1 / child_mass + 1 / parent_mass)`. Gains are
+`Kp = I * (TAU * frequency)^2` and `Kd = 2 * damping * I * TAU * frequency`.
+This is deliberately approximate, especially for tiny neck/head bodies;
+damping ratios are tuning inputs, not guaranteed critical damping.
+`get_joint_parameters(name)` returns `(Kp, Kd, max_torque)` for inspection.
+The original raw gain/default setters remain available for compatibility.
+
+Initial profile values `(Hz, damping ratio, Nm)`:
+
+| Group | Values |
+| --- | --- |
+| Arms, shoulders, hands | (2, 1, 0.5) |
+| Spine | (1.5, 1, 2) |
+| Legs | (2, 1, 1) |
+| Feet | (1.5, 1, 0.3) |
+| Neck/head | (1, 0.2, 0.2) |
+
+## Targets and pose composition
+
+`RagdollPose` stores quaternion offsets in `get_joint_name(index)` order.
+Use poses with the same initialized skeleton ordering. `neutral(count)` makes
+identity offsets. `blended(other, weight)` uses shortest-path slerp; `composed`
+returns `base * offset`. Both return a new pose without modifying their inputs.
+
+```gdscript
+var targets := ragdoll.target_controller
+targets.base_pose = ragdoll.neutral_pose.blended(ragdoll.boxing_pose, 0.7)
+targets.control_offset = residual_pose # Same joint ordering; identity means no offset.
+```
+
+`RagdollTargetController` composes the base and residual pose, then applies
+exponential quaternion smoothing each physics tick. `smoothing_speed` defaults
+to 8 per second (zero freezes the target). It runs before PD, differentiates the
+shortest quaternion step, and converts that velocity from reference-child axes
+into parent-body axes. `use_target_velocity = false` sends zero velocities.
+
+The low-level controller still accepts immediate quaternion and angular velocity
+targets. Disable the target controller's physics processing before driving PD
+directly, otherwise it will overwrite those targets on the next tick.
+`RagdollPose.apply_to(pd)` applies an immediate stationary pose and clears target
+velocities. PD reset methods also clear both target rotation and velocity.
+
+Desired relative orientation is `reference * target`. The reference includes
+physical body offsets. PD computes orientation error in the parent frame,
+transforms it into world space, and uses child-minus-parent angular velocity.
+Torque is magnitude-limited and applied once per 120 Hz tick as child `+torque`
+and parent `-torque`, without multiplying by delta. Zero strength or torque
+limit disables output. No root correction is applied.
+
+Initialize and capture the reference before starting physical simulation.
+Discovery uses direct physical parents and ascending skeleton IDs; bones with
+no physical parent or no joint are skipped. The sample poses are generated once
+at startup from this reference, including mirrored arm directions.
 
 ## Validation
-
-After building, run from the project root:
 
 ```powershell
 ./Addon/retro_boxing/tests/run_tests.ps1
 ```
 
-Native math checks cover signed angles, the 179/-179 crossing, quaternion sign
-equivalence, world-frame conversion, damping, strength and magnitude limits.
-The headless Jolt test checks the actual skeleton hierarchy, elbow convergence,
-impulse disturbance recovery, reset, all-motor finite simulation and freed-body
-safety. The elbow convergence test removes gravity and collisions to isolate
-the motor, then restores both for the all-motor smoke test.
+Native math checks cover signed angles, quaternion sign equivalence, the
+179/-179 crossing, world-frame conversion, damping, strength, and torque limits.
+Headless Jolt checks cover profile isolation, atomic rejection of invalid inputs, gain scaling, pose composition,
+elbow convergence and recovery, full-body pose convergence, four-region impulse
+recovery, boxing convergence, 30-degree arm velocity feed-forward comparison, gravity/collision
+finite simulation, and freed-body safety. Convergence tests disable collisions
+and gravity to isolate actuators. The rendered boxing pose was also inspected
+with scene collisions enabled. The profile API test intentionally prints three
+rejected-input errors; its success marker distinguishes them from test failures.
 
-The conservative defaults (Kp 2, Kd 0.08, maximum torque 0.5) were checked on
-this scene's elbow at 120 Hz. Full-body balance, collision recovery tuning,
-anatomical debug poses, and RL action limits/adapters remain later work, as in
-the plan. No upright root motor, pose stack, IK, or learned policy is included.
+On the included skeleton, the full-body test and boxing stance converged within
+7 degrees per joint. Calculated velocity reduced mean tracking error on the
+30-degree arm test from about 10.5 to 4.7 degrees. Large whole-body transitions
+can saturate torque limits; feed-forward does not guarantee better tracking in
+that case. Reduce target speed or tune the profiles for such movements.
+
+This remains an actuator test, not learned balance, IK, punching, or an animation
+graph. The free body can rotate or drift after an impulse. Profile inertia and
+stance parameters will need further tuning when adding those later systems.
