@@ -1,0 +1,32 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# SCons state, cache, and optional tooling output
+/.scons-cache/
+/.sconsign*.dblite
+/compile_commands.json
+
+# C/C++ build products
+*.o
+*.obj
+*.lo
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+*.wasm
+*.exp
+*.pdb
+
+# GDExtension output directory (keep the manifest tracked)
+/Addon/retro_boxing/bin/*
+!/Addon/retro_boxing/bin/retro_boxing.gdextension
+
+# Local/editor and operating-system files
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db
