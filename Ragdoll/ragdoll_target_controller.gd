@@ -16,6 +16,14 @@ func initialize(pd: ActiveRagdollPD3D) -> void:
 	# Update targets before the PD motor runs this tick.
 	process_physics_priority = -1
 
+func reset_targets() -> void:
+	if not is_instance_valid(controller):
+		return
+	base_pose = RagdollPose.neutral(controller.get_joint_count())
+	control_offset = RagdollPose.neutral(controller.get_joint_count())
+	current = RagdollPose.neutral(controller.get_joint_count())
+	controller.reset_all_targets()
+
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(controller) or delta <= 0:
 		return

@@ -1,6 +1,12 @@
 [gd_scene format=3 uid="uid://cn80mjy2m78di"]
 
 [ext_resource type="PackedScene" uid="uid://cjh660r1vc67p" path="res://Ragdoll/active_ragdoll.tscn" id="1_37kl0"]
+[ext_resource type="Script" uid="uid://cyqipuf7fpyok" path="res://Ragdoll/balance_environment.gd" id="2_environment"]
+[ext_resource type="Script" uid="uid://dgdi8ki0xmrkd" path="res://Ragdoll/balance_state_provider.gd" id="3_state"]
+[ext_resource type="Script" uid="uid://cgbbhnbxcq0vs" path="res://Ragdoll/balance_controller.gd" id="4_controller"]
+[ext_resource type="Script" uid="uid://cbonw8kas4lvr" path="res://Ragdoll/balance_episode.gd" id="5_episode"]
+[ext_resource type="Script" uid="uid://cdo4ubaxgds3d" path="res://Ragdoll/balance_manual_test.gd" id="6_manual"]
+[ext_resource type="Script" uid="uid://bg356a873a64c" path="res://Ragdoll/ragdoll_debug_targets.gd" id="7_debug"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_mf4mk"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -25,6 +31,7 @@ material = SubResource("StandardMaterial3D_porlw")
 size = Vector2(8, 8)
 
 [node name="Test" type="Node3D" unique_id=1749984315]
+script = ExtResource("2_environment")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1457423613]
 environment = SubResource("Environment_8uh7m")
@@ -47,4 +54,18 @@ mesh = SubResource("PlaneMesh_ray1q")
 transform = Transform3D(1, 0, 0, 0, 0.9491475, 0.31483176, 0, -0.31483176, 0.9491475, 0, 1.6788781, 2.4102225)
 
 [node name="ActiveRagdoll" parent="." unique_id=329149381 instance=ExtResource("1_37kl0")]
-isolate_gravity = true
+
+[node name="BalanceStateProvider" type="Node" parent="." unique_id=587082866]
+script = ExtResource("3_state")
+
+[node name="BalanceController" type="Node" parent="." unique_id=1083214245]
+script = ExtResource("4_controller")
+
+[node name="BalanceEpisode" type="Node" parent="." unique_id=16383824]
+script = ExtResource("5_episode")
+
+[node name="ManualActionTest" type="Node" parent="." unique_id=94986985]
+script = ExtResource("6_manual")
+
+[node name="DebugTargets" type="Node" parent="." unique_id=1601164744]
+script = ExtResource("7_debug")
