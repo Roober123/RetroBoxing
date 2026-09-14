@@ -116,3 +116,63 @@ that case. Reduce target speed or tune the profiles for such movements.
 This remains an actuator test, not learned balance, IK, punching, or an animation
 graph. The free body can rotate or drift after an impulse. Profile inertia and
 stance parameters will need further tuning when adding those later systems.
+
+## Balance action interface
+
+`BalanceJointAxisResolver` inspects the seven balance joints once at scene startup,
+using rest geometry for anatomical directions and physical joint frames for candidate
+axes. Offsets are expressed in the reference child body's axes, matching
+`reference * target` in PD. `joint_rotation` is already included in `joint_offset`.
+The current Mixamo bone names and cone joints are the supported rig contract;
+missing geometry, locked cone spans, and unsupported joint types fail explicitly.
+This is not a general-purpose anatomical retargeter.
+
+The action order remains the 12 entries in `BalanceController.ACTION_NAMES`.
+Positive hip/spine pitch moves forward; positive roll moves toward character right.
+Positive ankle pitch lifts the toes. Ankle roll uses the sole normal as its movement
+probe, since rotating about the foot's length barely moves the toes. Knee flexion
+moves the lower leg backward. Signs are resolved independently per joint.
+
+Knees map `[-1, 0, +1]` to `[0, 17.5, 35]` degrees of additional reference-pose
+flexion. Consequently **neutral is `[0,0,0,0,-1,-1,0,0,0,0,0,0]`**, available through
+`get_neutral_action()`. An all-zero policy action bends both knees halfway.
+Reset restores identity offsets, smoothing state, motor targets, velocities, and
+elapsed time. The reference knees are already slightly bent; actions do not command
+extension beyond that reference. The existing cone constraints still allow passive
+hyperextension under external forces; this change restricts commanded targets.
+
+Exported angle limits are capped conservatively by the smaller cone span, divided
+between a joint's action axes. The current spine swing span is 7 degrees, so its
+effective pitch/roll limits are 3.5 degrees each. This preserves the physical rig;
+constraint/profile tuning can be done separately during balance training.
+
+`BalanceEpisode` advances `elapsed_time` using physics delta and caps it at the
+exported `maximum_episode_duration` (10 seconds). `has_failed()` and
+`has_timed_out()` are separate queries, also exposed by `BalanceEnvironment`;
+`is_terminal()` combines them. The caller ends/resets an episode; timeout does not
+freeze simulation or automatically reset it. RL code can map failure to termination
+and timeout to truncation (failure takes precedence when both occur).
+
+### Verification
+
+In debug builds, the test scene supports `G` to toggle gravity and `C` to cycle all
+12 actions through -1, 0, +1, resetting between samples. The inspector also exposes
+`gravity_free`, `auto_cycle`, and `cycle_seconds`. Normal gravity defaults to 1;
+the helper restores each body's original value. `[` / `]` select, `-` / `=` adjust,
+`0` restores neutral, and `R` resets the episode. Gravity changes live only in this
+test helper, not `ActiveRagdoll`.
+
+The test runner includes resolver normalization/independence, joint-frame
+permutation, knee mapping, repeated resets, exact 10-second boundaries at 60/240 Hz,
+and separate failure/timeout checks. The action runtime test exercises every action
+with real collisions and no gravity, then compares five balance input groups against
+neutral under normal gravity. These check actuator response, not learned stability.
+
+For a rendered contact sheet of all 12 positive actions:
+
+```powershell
+godot --path . --rendering-method gl_compatibility --script Addon/retro_boxing/tests/balance_action_runtime_test.gd -- --capture
+```
+
+The image is saved to `.godot/balance-actions.png`. Fixed policy frequency, rewards,
+PPO integration, and balance training remain the next stage.

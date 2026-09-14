@@ -17,10 +17,17 @@ const ACTION_NAMES := [
 @onready var ragdoll: ActiveRagdoll = get_node(ragdoll_path)
 var action := PackedFloat32Array()
 var _joint_indices: Dictionary = {}
+var axis_resolver := BalanceJointAxisResolver.new()
+var axes_ready := false
 
 func _ready() -> void:
 	for i in ragdoll.pd_controller.get_joint_count():
 		_joint_indices[ragdoll.pd_controller.get_joint_name(i)] = i
+	axes_ready = axis_resolver.resolve(ragdoll.skel, ragdoll.bone_sim)
+	for bone in axis_resolver.joints:
+		if not _joint_indices.has(bone):
+			push_error("Balance joint has no PD motor: %s" % bone)
+			axes_ready = false
 	action.resize(ACTION_NAMES.size())
 	reset_action()
 
@@ -31,9 +38,15 @@ func get_action_names() -> PackedStringArray:
 	return PackedStringArray(ACTION_NAMES)
 
 func apply_action(values) -> void:
+	if not axes_ready:
+		return
 	if values == null or values.size() != ACTION_NAMES.size():
 		push_error("Balance action must contain %d values." % ACTION_NAMES.size())
 		return
+	for value in values:
+		if not is_finite(float(value)):
+			push_error("Balance action values must be finite.")
+			return
 	for i in ACTION_NAMES.size():
 		action[i] = clampf(float(values[i]), -1.0, 1.0)
 	var pose := RagdollPose.neutral(ragdoll.pd_controller.get_joint_count())
@@ -47,18 +60,27 @@ func apply_action(values) -> void:
 	ragdoll.target_controller.control_offset = pose
 
 func reset_action() -> void:
-	action.fill(0.0)
+	action = get_neutral_action()
 	if is_instance_valid(ragdoll) and is_instance_valid(ragdoll.target_controller):
 		ragdoll.target_controller.control_offset = RagdollPose.neutral(ragdoll.pd_controller.get_joint_count())
 
 func _set_one_axis(pose: RagdollPose, bone: StringName, value: float, limit_degrees: float) -> void:
 	var index: int = _joint_indices.get(bone, -1)
 	if index >= 0:
-		pose.rotations[index] = Quaternion(Vector3.RIGHT, deg_to_rad(limit_degrees) * value)
+		limit_degrees = minf(limit_degrees, axis_resolver.joints[bone].limit_degrees)
+		pose.rotations[index] = Quaternion(axis_resolver.joints[bone].axes[0], deg_to_rad(limit_degrees) * (value + 1.0) * 0.5 * axis_resolver.joints[bone].signs[0])
 
 func _set_two_axis(pose: RagdollPose, bone: StringName, pitch: float, roll: float, limit_degrees: float) -> void:
 	var index: int = _joint_indices.get(bone, -1)
 	if index >= 0:
-		var pitch_rotation := Quaternion(Vector3.RIGHT, deg_to_rad(limit_degrees) * pitch)
-		var roll_rotation := Quaternion(Vector3.FORWARD, deg_to_rad(limit_degrees) * roll)
+		limit_degrees = minf(limit_degrees, axis_resolver.joints[bone].limit_degrees)
+		var pitch_rotation := Quaternion(axis_resolver.joints[bone].axes[0], deg_to_rad(limit_degrees) * pitch * axis_resolver.joints[bone].signs[0])
+		var roll_rotation := Quaternion(axis_resolver.joints[bone].axes[1], deg_to_rad(limit_degrees) * roll * axis_resolver.joints[bone].signs[1])
 		pose.rotations[index] = (pitch_rotation * roll_rotation).normalized()
+
+func get_neutral_action() -> PackedFloat32Array:
+	var neutral := PackedFloat32Array()
+	neutral.resize(ACTION_NAMES.size())
+	neutral[4] = -1.0
+	neutral[5] = -1.0
+	return neutral

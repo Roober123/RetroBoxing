@@ -25,6 +25,12 @@ try {
     if ($balance.ExitCode -ne 0 -or $balanceOutput -notmatch 'Balance preparation tests passed' -or $balanceOutput -match 'SCRIPT ERROR:') {
         throw 'Balance preparation tests failed or timed out.'
     }
+    $actions = Start-Process -FilePath (Get-Command godot).Source -ArgumentList '--headless --path . --log-file .godot/balance-action-test.log --script Addon/retro_boxing/tests/balance_action_runtime_test.gd --quit-after 9000' -WindowStyle Hidden -Wait -PassThru
+    $actionOutput = Get-Content -LiteralPath .godot/balance-action-test.log -Raw
+    Write-Host $actionOutput
+    if ($actions.ExitCode -ne 0 -or $actionOutput -notmatch 'Balance action runtime tests passed' -or $actionOutput -match 'SCRIPT ERROR:') {
+        throw 'Balance action runtime tests failed or timed out.'
+    }
 } finally {
     Pop-Location
 }

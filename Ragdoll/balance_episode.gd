@@ -7,6 +7,8 @@ extends Node
 @export var minimum_head_height := 0.45
 @export_range(0.0, 90.0, 1.0) var maximum_pelvis_tilt_degrees := 60.0
 @export var maximum_distance := 4.0
+@export_range(0.01, 3600.0, 0.01) var maximum_episode_duration := 10.0
+var elapsed_time := 0.0
 
 @onready var ragdoll: ActiveRagdoll = get_node(ragdoll_path)
 @onready var balance_controller: BalanceController = get_node(controller_path)
@@ -28,7 +30,14 @@ func _ready() -> void:
 				_head = body
 	_start_position = _pelvis.global_position
 
+func _physics_process(delta: float) -> void:
+	elapsed_time = minf(elapsed_time + delta, maximum_episode_duration)
+	# Avoid delaying the boundary by one tick because of accumulated roundoff.
+	if maximum_episode_duration - elapsed_time < 0.000000001:
+		elapsed_time = maximum_episode_duration
+
 func reset() -> void:
+	elapsed_time = 0.0
 	ragdoll.pd_controller.enabled = false
 	balance_controller.reset_action()
 	ragdoll.target_controller.reset_targets()
@@ -47,7 +56,13 @@ func reset() -> void:
 		PhysicsServer3D.body_set_state(body.get_rid(), PhysicsServer3D.BODY_STATE_SLEEPING, false)
 	ragdoll.pd_controller.enabled = true
 
+func has_timed_out() -> bool:
+	return elapsed_time >= maximum_episode_duration
+
 func is_terminal() -> bool:
+	return has_failed() or has_timed_out()
+
+func has_failed() -> bool:
 	if not _pelvis or not _head:
 		return true
 	if _pelvis.global_position.y < minimum_pelvis_height or _head.global_position.y < minimum_head_height:

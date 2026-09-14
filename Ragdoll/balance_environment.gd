@@ -16,3 +16,9 @@ func apply_action(action) -> void:
 
 func is_terminal() -> bool:
 	return episode.is_terminal()
+
+func has_failed() -> bool:
+	return episode.has_failed()
+
+func has_timed_out() -> bool:
+	return episode.has_timed_out()
