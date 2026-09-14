@@ -29,8 +29,7 @@ func run() -> void:
 		actions.append(arena.get_neutral_action())
 	manager.begin_policy_step(actions)
 	assert(manager.is_policy_step_in_progress())
-	for tick in BalanceTrainingManager.POLICY_INTERVAL:
-		manager._physics_process(1.0 / 240.0)
+	await manager.policy_step_completed
 	assert(not manager.is_policy_step_in_progress())
 	assert(manager.last_step_result.observations.size() == 4)
 	assert(manager.last_step_result.rewards.size() == 4)
@@ -39,13 +38,12 @@ func run() -> void:
 	manager.arenas[0].episode.minimum_pelvis_height = manager.arenas[0].episode._pelvis.global_position.y + 1.0
 	var survivor_elapsed := manager.arenas[1].episode.elapsed_time
 	manager.begin_policy_step(actions)
-	for tick in BalanceTrainingManager.POLICY_INTERVAL:
-		manager._physics_process(1.0 / 240.0)
+	await manager.policy_step_completed
 	assert(manager.last_step_result.terminated[0])
 	assert(manager.last_step_result.terminal_observations[0].size() == manager.get_observation_size())
 	assert(manager.last_step_result.terminal_observations[1].is_empty())
 	assert(manager.arenas[0].episode.elapsed_time == 0.0)
-	assert(manager.arenas[1].episode.elapsed_time == survivor_elapsed)
+	assert(is_equal_approx(manager.arenas[1].episode.elapsed_time - survivor_elapsed, 4.0 / 240.0))
 	manager.arenas[0].episode.minimum_pelvis_height = 0.45
 	var other_elapsed: float = manager.arenas[1].episode.elapsed_time
 	manager.arenas[0].reset()

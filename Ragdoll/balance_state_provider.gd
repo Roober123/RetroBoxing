@@ -8,6 +8,7 @@ const CHARACTER_SIZE_SCALE := 1.0
 const NORMALIZED_LIMIT := 5.0
 
 @export var ragdoll_path: NodePath = ^"../ActiveRagdoll"
+@onready var balance_controller: BalanceController = get_node(^"../BalanceController")
 @onready var ragdoll: ActiveRagdoll = get_node(ragdoll_path)
 
 var _bodies_by_id: Dictionary = {}
@@ -96,11 +97,13 @@ func get_observation() -> PackedFloat32Array:
 	_append_vector(observation, _normalized_vector(state.com_position, CHARACTER_SIZE_SCALE))
 	_append_vector(observation, _normalized_vector(state.com_velocity, LINEAR_VELOCITY_SCALE))
 	_append_vector(observation, _normalized_vector(state.horizontal_com_offset, CHARACTER_SIZE_SCALE))
+	# Last applied normalized action; reset observations contain neutral input.
+	observation.append_array(balance_controller.action)
 	assert(observation.size() == get_observation_size())
 	return observation
 
 func get_observation_size() -> int:
-	return 30 + ragdoll.pd_controller.get_joint_count() * 7
+	return 30 + ragdoll.pd_controller.get_joint_count() * 7 + balance_controller.get_action_size()
 
 func _normalized_vector(value: Vector3, scale: float) -> Vector3:
 	var normalized := value / scale

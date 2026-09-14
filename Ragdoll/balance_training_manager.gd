@@ -16,7 +16,11 @@ var arenas: Array[BalanceEnvironment] = []
 var physics_tick := 0
 var policy_step_count := 0
 var last_step_result: PolicyStepResult
+enum TrainingState { WAITING_FOR_ACTION, RUNNING_POLICY_STEP }
+
+var _state := TrainingState.WAITING_FOR_ACTION
 var _ticks_remaining := 0
+var _previous_tree_paused := false
 var episode_count := 0
 var failed_episode_count := 0
 var timed_out_episode_count := 0
@@ -26,24 +30,42 @@ var _episode_rewards := PackedFloat32Array()
 
 func _ready() -> void:
 	assert(Engine.physics_ticks_per_second == PHYSICS_HZ)
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_previous_tree_paused = get_tree().paused
 	_spawn_arenas()
 	_episode_rewards.resize(arenas.size())
+	get_tree().physics_frame.connect(_on_physics_frame)
+	get_tree().paused = true
+
+func _exit_tree() -> void:
+	get_tree().physics_frame.disconnect(_on_physics_frame)
+	get_tree().paused = _previous_tree_paused
 
 func _physics_process(_delta: float) -> void:
-	physics_tick += 1
-	if _ticks_remaining == 0:
+	if not is_policy_step_in_progress():
 		return
+	physics_tick += 1
 	_ticks_remaining -= 1
-	if _ticks_remaining == 0:
+
+func _on_physics_frame() -> void:
+	# This boundary follows the fourth physics integration and synchronization.
+	# Pause before any fifth controller/episode callback or physics integration.
+	if is_policy_step_in_progress() and _ticks_remaining == 0:
+		get_tree().paused = true
 		_finish_policy_step()
 
 func begin_policy_step(actions: Array) -> void:
-	assert(_ticks_remaining == 0, "A policy step is already in progress.")
+	assert(is_waiting_for_action(), "A policy step is already in progress.")
 	apply_actions(actions)
 	_ticks_remaining = POLICY_INTERVAL
+	_state = TrainingState.RUNNING_POLICY_STEP
+	get_tree().paused = false
+
+func is_waiting_for_action() -> bool:
+	return _state == TrainingState.WAITING_FOR_ACTION
 
 func is_policy_step_in_progress() -> bool:
-	return _ticks_remaining > 0
+	return _state == TrainingState.RUNNING_POLICY_STEP
 
 func _finish_policy_step() -> void:
 	var result := PolicyStepResult.new()
@@ -52,8 +74,7 @@ func _finish_policy_step() -> void:
 		var observation := arena.get_observation()
 		var reward_value := arena.get_reward()
 		var failed := arena.has_failed()
-		var timed_out := arena.has_timed_out()
-		result.observations.append(observation)
+		var timed_out := arena.has_timed_out() and not failed
 		result.rewards.append(reward_value)
 		result.terminated.append(failed)
 		result.truncated.append(timed_out)
@@ -67,6 +88,9 @@ func _finish_policy_step() -> void:
 			total_episode_reward += _episode_rewards[i]
 			_episode_rewards[i] = 0.0
 			arena.reset()
+			observation = arena.get_observation()
+		result.observations.append(observation)
+	_state = TrainingState.WAITING_FOR_ACTION
 	last_step_result = result
 	policy_step_count += 1
 	policy_step_completed.emit(result)
@@ -77,6 +101,7 @@ func _spawn_arenas() -> void:
 		var arena := arena_scene.instantiate() as BalanceEnvironment
 		arena.name = "Arena%d" % i
 		arena.position = Vector3((i % columns) * arena_spacing, 0.0, (i / columns) * arena_spacing)
+		arena.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(arena)
 		arena.set_gravity_scale(initial_gravity_scale)
 		arenas.append(arena)

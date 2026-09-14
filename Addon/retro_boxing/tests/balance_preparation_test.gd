@@ -67,7 +67,7 @@ func run() -> void:
 	assert(state.joint_angular_velocities.size() == 19)
 	var observation := environment.get_observation()
 	assert(observation.size() == environment.get_observation_size())
-	assert(environment.get_observation_size() == 163)
+	assert(environment.get_observation_size() == 175)
 	assert(environment.get_action_size() == 12)
 	for value in observation:
 		assert(is_finite(value))

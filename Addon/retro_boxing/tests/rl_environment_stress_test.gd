@@ -1,6 +1,7 @@
 extends SceneTree
 
 const STEP_COUNT := 2000
+const Checks = preload("res://Addon/retro_boxing/tests/training_checks.gd")
 
 func _initialize() -> void:
 	call_deferred("run")
@@ -21,9 +22,13 @@ func run() -> void:
 				for i in action.size():
 					action[i] = rng.randf_range(-1.0, 1.0)
 			actions.append(action)
+		var before_tick := manager.physics_tick
 		manager.begin_policy_step(actions)
-		while manager.is_policy_step_in_progress():
-			await physics_frame
+		await manager.policy_step_completed
+		assert(manager.physics_tick - before_tick == 4)
+		Checks.check_result(manager)
+		if step % 100 == 0:
+			await Checks.check_frozen(manager)
 		var result := manager.last_step_result
 		assert(result.observations.size() == manager.arena_count)
 		for i in manager.arena_count:
@@ -39,14 +44,14 @@ func run() -> void:
 					assert(body.linear_velocity.is_finite() and body.angular_velocity.is_finite())
 		if step == STEP_COUNT / 2 - 1:
 			random_statistics = manager.get_training_statistics().duplicate()
-	var statistics := manager.get_training_statistics()
-	var neutral_statistics := {
-		"episode_count": statistics.episode_count - random_statistics.episode_count,
-		"failed_episode_count": statistics.failed_episode_count - random_statistics.failed_episode_count,
-		"timed_out_episode_count": statistics.timed_out_episode_count - random_statistics.timed_out_episode_count,
-		"policy_steps": STEP_COUNT / 2,
-	}
+			# Start an independent neutral baseline with fresh episodes/statistics.
+			await process_frame # Leave the completion signal before freeing its emitter.
+			manager.free()
+			manager = BalanceTrainingManager.new()
+			manager.arena_count = 2
+			manager.initial_gravity_scale = 1.0
+			root.add_child(manager)
 	print("Random policy statistics: ", random_statistics)
-	print("Neutral policy baseline: ", neutral_statistics)
+	print("Neutral policy baseline: ", manager.get_training_statistics())
 	print("RL environment stress tests passed")
 	quit()
