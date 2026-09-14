@@ -1,26 +1,22 @@
 extends Node
 
-@export var controller_path: NodePath = ^"../BalanceController"
-@export var episode_path: NodePath = ^"../BalanceEpisode"
+@export var arena_path: NodePath = ^"../BalanceTrainingArena"
 @export_range(0.05, 1.0, 0.05) var step := 0.25
-@onready var controller: BalanceController = get_node(controller_path)
-@onready var episode: BalanceEpisode = get_node(episode_path)
+@onready var arena: BalanceEnvironment = get_node(arena_path)
+@onready var controller: BalanceController = arena.balance_controller
+@onready var episode: BalanceEpisode = arena.episode
 var selected_action := 0
 @export var gravity_free := false
 @export var auto_cycle := false
 @export_range(0.2, 10.0, 0.1) var cycle_seconds := 2.0
 var _cycle_elapsed := 0.0
 var _cycle_index := 0
-var _gravity: Dictionary = {}
 
 func _ready() -> void:
 	if not OS.is_debug_build():
 		set_physics_process(false)
 		set_process_unhandled_key_input(false)
 		return
-	for body in controller.ragdoll.bone_sim.get_children():
-		if body is PhysicalBone3D:
-			_gravity[body] = body.gravity_scale
 	_set_gravity()
 	print("Balance controls: [ / ] select, - / = adjust, 0 neutral, R reset, G gravity, C cycle")
 	_print_selection()
@@ -62,8 +58,7 @@ func _print_selection() -> void:
 	print("Selected balance action: ", controller.get_action_names()[selected_action])
 
 func _set_gravity() -> void:
-	for body in _gravity:
-		body.gravity_scale = 0.0 if gravity_free else _gravity[body]
+	arena.set_gravity_scale(0.0 if gravity_free else 1.0)
 	print("Gravity-free verification: ", gravity_free)
 
 func _physics_process(delta: float) -> void:

@@ -25,6 +25,12 @@ try {
     if ($balance.ExitCode -ne 0 -or $balanceOutput -notmatch 'Balance preparation tests passed' -or $balanceOutput -match 'SCRIPT ERROR:') {
         throw 'Balance preparation tests failed or timed out.'
     }
+    $multiArena = Start-Process -FilePath (Get-Command godot).Source -ArgumentList '--headless --path . --log-file .godot/multi-arena-test.log --script Addon/retro_boxing/tests/multi_arena_training_test.gd --quit-after 9000' -WindowStyle Hidden -Wait -PassThru
+    $multiArenaOutput = Get-Content -LiteralPath .godot/multi-arena-test.log -Raw
+    Write-Host $multiArenaOutput
+    if ($multiArena.ExitCode -ne 0 -or $multiArenaOutput -notmatch 'Multi-arena training tests passed' -or $multiArenaOutput -match 'SCRIPT ERROR:') {
+        throw 'Multi-arena training tests failed or timed out.'
+    }
     $actions = Start-Process -FilePath (Get-Command godot).Source -ArgumentList '--headless --path . --log-file .godot/balance-action-test.log --script Addon/retro_boxing/tests/balance_action_runtime_test.gd --quit-after 9000' -WindowStyle Hidden -Wait -PassThru
     $actionOutput = Get-Content -LiteralPath .godot/balance-action-test.log -Raw
     Write-Host $actionOutput

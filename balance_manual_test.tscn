@@ -1,0 +1,34 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="PackedScene" path="res://balance_training_arena.tscn" id="1"]
+[ext_resource type="Script" path="res://Ragdoll/balance_manual_test.gd" id="2"]
+[ext_resource type="Script" path="res://Ragdoll/ragdoll_debug_targets.gd" id="3"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMaterial"]
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("SkyMaterial")
+
+[sub_resource type="Environment" id="Environment"]
+background_mode = 2
+sky = SubResource("Sky")
+
+[node name="BalanceManualTest" type="Node3D"]
+
+[node name="BalanceTrainingArena" parent="." instance=ExtResource("1")]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-60, -150, 0)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.9491475, 0.31483176, 0, -0.31483176, 0.9491475, 0, 1.6788781, 2.4102225)
+
+[node name="ManualActionTest" type="Node" parent="."]
+script = ExtResource("2")
+
+[node name="DebugTargets" type="Node" parent="."]
+script = ExtResource("3")

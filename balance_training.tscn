@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://3o1hf1cvim6w"]
+
+[ext_resource type="Script" uid="uid://0ix2ik7mmp4x" path="res://Ragdoll/balance_training_manager.gd" id="1"]
+
+[node name="BalanceTrainingScene" type="Node3D" unique_id=2043248737]
+
+[node name="BalanceTrainingManager" type="Node3D" parent="." unique_id=371330837]
+script = ExtResource("1")
+arena_count = 9
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=793644616]
+transform = Transform3D(1, 0, 0, 0, 0.88410723, 0.46728417, 0, -0.46728417, 0.88410723, 12, 14.469086, 35)

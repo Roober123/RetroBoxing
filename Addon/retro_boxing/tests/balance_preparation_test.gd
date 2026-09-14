@@ -5,7 +5,7 @@ func _initialize() -> void:
 
 func run() -> void:
 	assert(Engine.physics_ticks_per_second == 240)
-	var environment: BalanceEnvironment = load("res://test.tscn").instantiate()
+	var environment: BalanceEnvironment = load("res://balance_training_arena.tscn").instantiate()
 	root.add_child(environment)
 	var ragdoll: ActiveRagdoll = environment.get_node("ActiveRagdoll")
 	assert(ragdoll.pd_controller.get_joint_count() == 19)

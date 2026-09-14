@@ -1,0 +1,30 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://Ragdoll/active_ragdoll.tscn" id="1"]
+[ext_resource type="Script" path="res://Ragdoll/balance_environment.gd" id="2"]
+[ext_resource type="Script" path="res://Ragdoll/balance_state_provider.gd" id="3"]
+[ext_resource type="Script" path="res://Ragdoll/balance_controller.gd" id="4"]
+[ext_resource type="Script" path="res://Ragdoll/balance_episode.gd" id="5"]
+
+[sub_resource type="BoxShape3D" id="PlatformShape"]
+size = Vector3(8, 0.2, 8)
+
+[node name="BalanceTrainingArena" type="Node3D"]
+script = ExtResource("2")
+
+[node name="Ground" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+position = Vector3(0, -0.1, 0)
+shape = SubResource("PlatformShape")
+
+[node name="ActiveRagdoll" parent="." instance=ExtResource("1")]
+
+[node name="BalanceStateProvider" type="Node" parent="."]
+script = ExtResource("3")
+
+[node name="BalanceController" type="Node" parent="."]
+script = ExtResource("4")
+
+[node name="BalanceEpisode" type="Node" parent="."]
+script = ExtResource("5")

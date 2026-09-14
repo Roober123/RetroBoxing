@@ -1,7 +1,7 @@
 extends Node
 ## 1-4: disturb forearm, arm, thigh, torso. Shift doubles impulse.
 ## V: velocity feed-forward on/off. This helper belongs to the sandbox scene.
-@export var ragdoll_path: NodePath = ^"../ActiveRagdoll"
+@export var ragdoll_path: NodePath = ^"../BalanceTrainingArena/ActiveRagdoll"
 @onready var ragdoll: ActiveRagdoll = get_node(ragdoll_path)
 
 func _unhandled_key_input(event: InputEvent) -> void:

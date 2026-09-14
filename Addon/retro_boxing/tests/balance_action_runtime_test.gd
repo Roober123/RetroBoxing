@@ -4,8 +4,9 @@ func _initialize() -> void:
 	call_deferred("run")
 
 func run() -> void:
-	var environment: BalanceEnvironment = load("res://test.tscn").instantiate()
-	root.add_child(environment)
+	var manual_scene: Node3D = load("res://test.tscn").instantiate()
+	root.add_child(manual_scene)
+	var environment: BalanceEnvironment = manual_scene.get_node("BalanceTrainingArena")
 	var controller := environment.balance_controller
 	var ragdoll: ActiveRagdoll = environment.get_node("ActiveRagdoll")
 	var bodies: Dictionary = {}
@@ -23,7 +24,7 @@ func run() -> void:
 		label = Label.new()
 		label.position = Vector2(12, 12)
 		root.add_child(label)
-		var camera: Camera3D = environment.get_node("Camera3D")
+		var camera: Camera3D = manual_scene.get_node("Camera3D")
 		camera.position = Vector3(2.1, 1.4, 2.1)
 		camera.look_at(Vector3(0, 0.95, 0))
 	for action_index in 12:
