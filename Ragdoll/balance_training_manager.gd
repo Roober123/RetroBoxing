@@ -118,6 +118,15 @@ func get_observations() -> Array:
 		observations.append(arena.get_observation())
 	return observations
 
+func reset_all() -> Array:
+	assert(is_waiting_for_action(), "Cannot reset during a policy step.")
+	if not is_waiting_for_action():
+		return []
+	for arena in arenas:
+		arena.reset()
+	_episode_rewards.fill(0.0)
+	return get_observations()
+
 func get_rewards() -> PackedFloat32Array:
 	var rewards := PackedFloat32Array()
 	for arena in arenas:
