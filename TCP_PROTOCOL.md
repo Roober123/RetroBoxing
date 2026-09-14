@@ -49,7 +49,7 @@ Incorrect sizes, invalid commands, bad magic/version, missing HELLO, and request
 during an active step produce ERROR and disconnect. Out-of-range values are
 rejected instead of relying on the controller clamp. RESET delegates to
 `reset_all()`, clearing episode reward accumulators while preserving lifetime
-statistics. Neutral action is `[0,0,0,0,-1,-1,0,0,0,0,0,0]` (the final 12
+statistics. Neutral action is `[0,0,0,0,0,0,0,0,0,0,0,0]` (the final 12
 observation values after reset).
 
 Both ends handle fragmented headers/payloads. Godot buffers partial writes and

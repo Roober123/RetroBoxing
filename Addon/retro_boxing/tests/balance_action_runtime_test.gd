@@ -29,6 +29,7 @@ func run() -> void:
 		camera.look_at(Vector3(0, 0.95, 0))
 	for action_index in 12:
 		environment.reset()
+		var neutral_targets := ragdoll.target_controller.control_offset.rotations.duplicate()
 		var action := controller.get_neutral_action()
 		action[action_index] = 1.0
 		controller.apply_action(action)
@@ -36,7 +37,7 @@ func run() -> void:
 		var target := Quaternion.IDENTITY
 		for i in ragdoll.pd_controller.get_joint_count():
 			var rotation := ragdoll.target_controller.control_offset.rotations[i]
-			if not rotation.is_equal_approx(Quaternion.IDENTITY):
+			if not rotation.is_equal_approx(neutral_targets[i]):
 				joint_index = i
 				target = rotation
 		assert(joint_index >= 0)

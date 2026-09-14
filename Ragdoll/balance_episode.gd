@@ -39,8 +39,8 @@ func _physics_process(delta: float) -> void:
 func reset() -> void:
 	elapsed_time = 0.0
 	ragdoll.pd_controller.enabled = false
-	balance_controller.reset_action()
 	ragdoll.target_controller.reset_targets()
+	balance_controller.reset_action()
 	ragdoll.bone_sim.physical_bones_stop_simulation()
 	for i in _bodies.size():
 		var body := _bodies[i]

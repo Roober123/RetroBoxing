@@ -28,7 +28,7 @@ class VecEnvTests(unittest.TestCase):
             self.assertFalse(infos[0]["TimeLimit.truncated"])
             self.assertTrue(infos[1]["TimeLimit.truncated"])
             self.assertNotIn("terminal_observation", infos[2])
-            self.assertEqual(infos[0]["episode"], {"r": 1.0, "l": 1, "duration": 1 / 60})
+            self.assertEqual(infos[0]["episode"], {"r": 1.0, "l": 1, "duration": 1 / 60, "success": False})
             np.testing.assert_array_equal(infos[1]["terminal_observation"], terminal[1])
             terminal.fill(0)
             self.assertTrue(infos[1]["terminal_observation"].all())

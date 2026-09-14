@@ -10,7 +10,8 @@ const ACTION_NAMES := [
 
 @export var ragdoll_path: NodePath = ^"../ActiveRagdoll"
 @export_range(0.0, 90.0, 0.5) var hip_limit_degrees := 20.0
-@export_range(0.0, 90.0, 0.5) var knee_limit_degrees := 35.0
+@export_range(0.0, 90.0, 0.5) var knee_limit_degrees := 20.0
+@export_range(0.0, 15.0, 0.5) var neutral_knee_degrees := 8.0
 @export_range(0.0, 90.0, 0.5) var ankle_limit_degrees := 15.0
 @export_range(0.0, 90.0, 0.5) var spine_limit_degrees := 10.0
 
@@ -62,13 +63,13 @@ func apply_action(values) -> void:
 func reset_action() -> void:
 	action = get_neutral_action()
 	if is_instance_valid(ragdoll) and is_instance_valid(ragdoll.target_controller):
-		ragdoll.target_controller.control_offset = RagdollPose.neutral(ragdoll.pd_controller.get_joint_count())
+		apply_action(action)
 
 func _set_one_axis(pose: RagdollPose, bone: StringName, value: float, limit_degrees: float) -> void:
 	var index: int = _joint_indices.get(bone, -1)
 	if index >= 0:
-		limit_degrees = minf(limit_degrees, axis_resolver.joints[bone].limit_degrees)
-		pose.rotations[index] = Quaternion(axis_resolver.joints[bone].axes[0], deg_to_rad(limit_degrees) * (value + 1.0) * 0.5 * axis_resolver.joints[bone].signs[0])
+		var angle := clampf(neutral_knee_degrees + value * limit_degrees, 0.0, axis_resolver.joints[bone].limit_degrees)
+		pose.rotations[index] = Quaternion(axis_resolver.joints[bone].axes[0], deg_to_rad(angle) * axis_resolver.joints[bone].signs[0])
 
 func _set_two_axis(pose: RagdollPose, bone: StringName, pitch: float, roll: float, limit_degrees: float) -> void:
 	var index: int = _joint_indices.get(bone, -1)
@@ -81,6 +82,4 @@ func _set_two_axis(pose: RagdollPose, bone: StringName, pitch: float, roll: floa
 func get_neutral_action() -> PackedFloat32Array:
 	var neutral := PackedFloat32Array()
 	neutral.resize(ACTION_NAMES.size())
-	neutral[4] = -1.0
-	neutral[5] = -1.0
 	return neutral

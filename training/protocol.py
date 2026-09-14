@@ -11,7 +11,7 @@ HEADER = struct.Struct("<IHHI")
 METADATA = struct.Struct("<6I")
 MAX_PAYLOAD = 4 * 1024 * 1024
 OBSERVATION_SIZE, ACTION_SIZE = 175, 12
-NEUTRAL_ACTION = np.array([0, 0, 0, 0, -1, -1, 0, 0, 0, 0, 0, 0], dtype=np.float32)
+NEUTRAL_ACTION = np.zeros(ACTION_SIZE, dtype=np.float32)
 
 
 class ProtocolError(RuntimeError):

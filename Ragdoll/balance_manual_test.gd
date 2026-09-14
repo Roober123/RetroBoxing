@@ -18,7 +18,7 @@ func _ready() -> void:
 		set_process_unhandled_key_input(false)
 		return
 	_set_gravity()
-	print("Balance controls: [ / ] select, - / = adjust, 0 neutral, R reset, G gravity, C cycle")
+	print("Balance controls: [ / ] select, - / = adjust, 0 neutral, R reset, G gravity, C cycle, P toggle PD")
 	_print_selection()
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -45,6 +45,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			auto_cycle = not auto_cycle
 			_cycle_index = 0
 			_cycle_elapsed = cycle_seconds
+		KEY_P:
+			arena.ragdoll.pd_controller.enabled = not arena.ragdoll.pd_controller.enabled
+			print("PD enabled: ", arena.ragdoll.pd_controller.enabled)
 		KEY_R:
 			episode.reset()
 

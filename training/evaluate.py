@@ -25,6 +25,8 @@ def evaluate(env, model, episodes):
                 results.append(infos[i]["episode"])
                 counts[i] += 1
     return {"episodes": len(results),
+            "success_rate": float(np.mean([x["success"] for x in results])),
+            "failure_rate": float(np.mean([not x["success"] for x in results])),
             "average_episode_duration": float(np.mean([x["duration"] for x in results])),
             "average_episode_reward": float(np.mean([x["r"] for x in results]))}
 
@@ -43,6 +45,7 @@ def main():
         baseline = evaluate(env, None, args.episodes)
         print("Neutral:", json.dumps(baseline), flush=True)
         policy = evaluate(env, PPO.load(args.model, env=env, device="cpu"), args.episodes)
+        policy["ready_to_advance"] = policy["success_rate"] >= 0.85 and policy["average_episode_duration"] >= 9.0
         print("PPO:", json.dumps(policy), flush=True)
         print("PPO survived longer:", policy["average_episode_duration"] > baseline["average_episode_duration"])
     finally:

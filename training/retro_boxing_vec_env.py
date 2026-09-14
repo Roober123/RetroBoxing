@@ -59,7 +59,8 @@ class RetroBoxingVecEnv(VecEnv):
                 info["terminal_observation"] = result.terminal_observations[i].copy()
                 info["episode"] = {"r": float(self._episode_rewards[i]),
                                    "l": int(self._episode_lengths[i]),
-                                   "duration": float(self._episode_lengths[i] / 60)}
+                                   "duration": float(self._episode_lengths[i] / 60),
+                                   "success": info["TimeLimit.truncated"]}
                 self._episode_rewards[i] = 0
                 self._episode_lengths[i] = 0
             infos.append(info)

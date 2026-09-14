@@ -12,9 +12,13 @@ func run() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--arenas="):
 			manager.arena_count = int(arg.trim_prefix("--arenas="))
+		elif arg.begins_with("--gravity="):
+			manager.initial_gravity_scale = float(arg.trim_prefix("--gravity="))
 		elif arg.begins_with("--port="):
 			port = int(arg.trim_prefix("--port="))
 	assert(manager.arena_count >= 1 and manager.arena_count <= 1024)
+	assert(is_finite(manager.initial_gravity_scale) and manager.initial_gravity_scale >= 0.0 and manager.initial_gravity_scale <= 2.0)
+	print("Training gravity scale: ", manager.initial_gravity_scale)
 	root.add_child(manager)
 	var server := BalanceTrainingServer.new()
 	server.port = port

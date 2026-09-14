@@ -63,16 +63,16 @@ python -m venv .venv
 ```
 
 Keep the headless server at two arenas and gravity 0.1 for the smoke test.
-PPO uses a small MLP, CPU execution, 256 rollout steps per arena, and batches of
+PPO uses a small MLP, CPU execution, 512 rollout steps per arena, and batches of
 64. Requested timesteps are rounded up to complete rollouts. The default model
-is `training/models/ppo_balance.zip`. Logs go to `training/runs/ppo` in CSV and
+is `training/models/ppo_balance_v2.zip`. Logs go to `training/runs/ppo_v2` in CSV and
 TensorBoard formats. All these outputs are gitignored.
 
 Stop/restart Godot, then continue training in a new Python process:
 
 ```powershell
-.venv/Scripts/python -m training.train_ppo --resume training/models/ppo_balance.zip --timesteps 2048 --log-dir training/runs/resumed
-.venv/Scripts/python -m training.evaluate --model training/models/ppo_balance.zip --episodes 10
+.venv/Scripts/python -m training.train_ppo --resume training/models/ppo_balance_v2.zip --model training/models/ppo_balance_v2_resumed --timesteps 2048 --log-dir training/runs/resumed
+.venv/Scripts/python -m training.evaluate --model training/models/ppo_balance_v2_resumed.zip --episodes 10
 .venv/Scripts/tensorboard --logdir training/runs
 ```
 
@@ -120,3 +120,52 @@ Four-episode evaluation of the 2,048-step smoke model at gravity 0.1:
 neutral averaged 6.35 simulation seconds and reward 1040.41; PPO averaged 3.825
 seconds and reward 634.36. The smoke model has **not** beaten neutral. Longer
 learning is still required; arena scaling was not attempted before this gate.
+
+
+## Balance v2: fresh policy and manual gravity curriculum
+
+No training is started by implementation or tests. Existing checkpoints are
+comparison artifacts: do not resume a pre-v2 policy because knee semantics,
+masses and reward changed. The default fresh output is `ppo_balance_v2`;
+existing output checkpoints are rejected to avoid overwriting your baseline.
+PPO uses gamma 0.997, GAE lambda 0.95, 512 steps per arena and batch size 64.
+At 28 arenas a rollout is 14,336 transitions, so timestep requests round up
+by that amount. Resume applies these horizon settings too.
+
+Before training, run `balance_manual_test.tscn`: `0` sends neutral (8 degree
+knees), `P` toggles PD, `R` resets (and enables PD), `G` toggles gravity.
+Inspect natural falls with PD off, reference-pose holding with PD on, and
+foot sliding during small corrections. Strong-force sliding still needs a
+manual physics check; no push disturbances were added to training.
+The body totals 76 kg; feet are 1.5 kg each with friction 0.8.
+
+Start the server and a fresh policy yourself:
+
+```powershell
+godot --headless --path . --script training/run_server.gd -- --arenas=28 --gravity=0.10 --port=7000
+.venv/Scripts/python -m training.train_ppo --timesteps 200000 --model training/models/balance_v2_g010 --log-dir training/runs/v2_g010
+.venv/Scripts/python -m training.evaluate --model training/models/balance_v2_g010.zip --episodes 280
+```
+
+Godot exclusively owns gravity. The Python training and evaluation processes do
+not accept, transmit, or report it; protocol v1 does not expose gravity.
+Evaluation reports success/failure rates, average duration/reward and a
+`ready_to_advance` recommendation (at least 85% timeouts and 9 seconds mean).
+Use repeated evaluations before advancing: resets are deterministic and
+many identical arenas do not establish robustness by themselves.
+
+Restart the server at the next gravity only after consistent success, then
+resume the same v2 model into a new checkpoint and log directory:
+
+```powershell
+godot --headless --path . --script training/run_server.gd -- --arenas=28 --gravity=0.15 --port=7000
+.venv/Scripts/python -m training.train_ppo --resume training/models/balance_v2_g010.zip --model training/models/balance_v2_g015 --log-dir training/runs/v2_g015 --timesteps 200000
+```
+
+Follow 0.10, 0.15, 0.20, 0.25, 0.35, 0.50, 0.70, 1.00. Stop/restart the
+previous server before each command; progression is never automatic.
+At 0.25 record duration, timeout percentage and reward and visually inspect
+ankle/hip/knee/spine coordination. Compare duration and success with your old
+experiment. Raw rewards across reward-function versions are not comparable;
+keep the original code/settings with the old checkpoint for a valid baseline.
+The historical verification figures above describe the old environment.

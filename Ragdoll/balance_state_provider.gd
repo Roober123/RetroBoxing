@@ -52,9 +52,15 @@ func get_state() -> Dictionary:
 	if total_mass > 0.0:
 		com_position /= total_mass
 		com_velocity /= total_mass
-	var support_center := (_left_foot.global_position + _right_foot.global_position) * 0.5
+	var left_contact := _foot_has_contact(_left_foot)
+	var right_contact := _foot_has_contact(_right_foot)
+	var has_support := left_contact or right_contact
+	var support_center := get_support_center(_left_foot.global_position, _right_foot.global_position, left_contact, right_contact)
 	var horizontal_offset := com_position - support_center
 	horizontal_offset.y = 0.0
+	if not has_support:
+		horizontal_offset = Vector3.ZERO
+	var horizontal_velocity := Vector3(com_velocity.x, 0.0, com_velocity.z)
 	return {
 		"pelvis_orientation": _pelvis.global_basis.orthonormalized().get_rotation_quaternion(),
 		"pelvis_up": _pelvis.global_basis.orthonormalized() * Vector3.UP,
@@ -66,11 +72,13 @@ func get_state() -> Dictionary:
 		"joint_angular_velocities": joint_angular_velocities,
 		"left_foot_position": _pelvis.to_local(_left_foot.global_position),
 		"right_foot_position": _pelvis.to_local(_right_foot.global_position),
-		"left_foot_contact": _foot_has_contact(_left_foot),
-		"right_foot_contact": _foot_has_contact(_right_foot),
+		"left_foot_contact": left_contact,
+		"right_foot_contact": right_contact,
 		"com_position": _pelvis.to_local(com_position),
 		"com_velocity": pelvis_inverse * com_velocity,
-		"support_center": _pelvis.to_local(support_center),
+		"horizontal_com_velocity": horizontal_velocity,
+		"has_support": has_support,
+		"support_center": _pelvis.to_local(support_center) if has_support else Vector3.ZERO,
 		"horizontal_com_offset": pelvis_inverse * horizontal_offset,
 	}
 
@@ -119,3 +127,12 @@ func _foot_has_contact(foot: PhysicalBone3D) -> bool:
 
 func _append_vector(values: PackedFloat32Array, vector: Vector3) -> void:
 	values.append_array(PackedFloat32Array([vector.x, vector.y, vector.z]))
+
+static func get_support_center(left: Vector3, right: Vector3, left_contact: bool, right_contact: bool) -> Vector3:
+	if left_contact and right_contact:
+		return (left + right) * 0.5
+	if left_contact:
+		return left
+	if right_contact:
+		return right
+	return Vector3.ZERO # Invalid support; callers must check contact flags.

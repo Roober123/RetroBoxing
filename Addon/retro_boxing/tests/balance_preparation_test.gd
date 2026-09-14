@@ -14,6 +14,33 @@ func run() -> void:
 		if body is PhysicalBone3D:
 			assert(is_equal_approx(body.gravity_scale, 1.0))
 
+	var total_mass := 0.0
+	for body in ragdoll.bone_sim.get_children():
+		if body is PhysicalBone3D:
+			total_mass += body.mass
+			if String(body.bone_name).ends_with("Foot"):
+				assert(is_equal_approx(body.mass, 1.5) and is_equal_approx(body.friction, 0.8))
+	assert(is_equal_approx(total_mass, 76.0))
+	var left := Vector3(-1, 0, 0)
+	var right := Vector3(1, 0, 0)
+	assert(BalanceStateProvider.get_support_center(left, right, true, true) == Vector3.ZERO)
+	assert(BalanceStateProvider.get_support_center(left, right, true, false) == left)
+	assert(BalanceStateProvider.get_support_center(left, right, false, true) == right)
+	assert(BalanceStateProvider.get_support_center(left, right, false, false) == Vector3.ZERO)
+	var sample := {"pelvis_up": Vector3.UP, "horizontal_com_offset": Vector3.ZERO,
+		"pelvis_height": 1.0, "has_support": true, "pelvis_angular_velocity": Vector3.ZERO,
+		"horizontal_com_velocity": Vector3.ZERO}
+	var stable := BalanceReward.reward_for_state(sample)
+	sample.pelvis_up = Basis(Vector3.RIGHT, deg_to_rad(10.0)) * Vector3.UP
+	var imperfect := BalanceReward.reward_for_state(sample)
+	sample.pelvis_up = Vector3.UP
+	sample.pelvis_angular_velocity = Vector3(5, 0, 0)
+	var rotating := BalanceReward.reward_for_state(sample)
+	sample.horizontal_com_velocity = Vector3(4, 0, 0)
+	var falling := BalanceReward.reward_for_state(sample)
+	assert(stable > imperfect and imperfect > rotating and rotating > falling and falling > -1.0)
+	sample.has_support = false
+	assert(is_equal_approx(BalanceReward.reward_for_state(sample), falling - 1.0))
 	var controller := environment.balance_controller
 	assert(controller.get_action_size() == 12)
 	assert(controller.axes_ready)
@@ -46,14 +73,15 @@ func run() -> void:
 		body.joint_offset = offsets[body]
 	# Neutral must mean the same thing through reset and through the action API.
 	environment.apply_action(controller.get_neutral_action())
-	for rotation in ragdoll.target_controller.control_offset.rotations:
-		assert(rotation.is_equal_approx(Quaternion.IDENTITY))
+	var neutral_pose := ragdoll.target_controller.control_offset.rotations.duplicate()
+	for value in controller.get_neutral_action():
+		assert(value == 0.0)
 	for knee in [4, 5]:
 		var middle := controller.get_neutral_action()
 		middle[knee] = 0.0
 		environment.apply_action(middle)
 		var index: int = controller._joint_indices[&"mixamorig_LeftLeg" if knee == 4 else &"mixamorig_RightLeg"]
-		assert(is_equal_approx(ragdoll.target_controller.control_offset.rotations[index].get_angle(), deg_to_rad(17.5)))
+		assert(is_equal_approx(ragdoll.target_controller.control_offset.rotations[index].get_angle(), deg_to_rad(8.0)))
 	var action := PackedFloat32Array()
 	action.resize(controller.get_action_size())
 	action.fill(2.0)
@@ -99,8 +127,8 @@ func run() -> void:
 		assert(not environment.has_timed_out())
 		for rotation in ragdoll.target_controller.current.rotations:
 			assert(rotation.is_equal_approx(Quaternion.IDENTITY))
-		for rotation in ragdoll.target_controller.control_offset.rotations:
-			assert(rotation.is_equal_approx(Quaternion.IDENTITY))
+		for i in neutral_pose.size():
+			assert(ragdoll.target_controller.control_offset.rotations[i].is_equal_approx(neutral_pose[i]))
 
 	# Exercise timer with different physics deltas without waiting ten wall seconds.
 	environment.episode.set_physics_process(false)
