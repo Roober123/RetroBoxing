@@ -66,9 +66,18 @@ func run() -> void:
 	assert(state.joint_rotations.size() == 19)
 	assert(state.joint_angular_velocities.size() == 19)
 	var observation := environment.get_observation()
-	assert(not observation.is_empty())
+	assert(observation.size() == environment.get_observation_size())
+	assert(environment.get_observation_size() == 163)
+	assert(environment.get_action_size() == 12)
 	for value in observation:
 		assert(is_finite(value))
+	var upright_reward := environment.get_reward()
+	assert(is_finite(upright_reward))
+	var original_pelvis_transform := environment.episode._pelvis.global_transform
+	environment.episode._pelvis.global_basis = Basis(Vector3.FORWARD, deg_to_rad(45.0)) * environment.episode._pelvis.global_basis
+	var leaning_reward := environment.get_reward()
+	assert(is_finite(leaning_reward) and leaning_reward < upright_reward)
+	environment.episode._pelvis.global_transform = original_pelvis_transform
 
 	var initial_transforms: Array[Transform3D] = []
 	var bodies: Array[PhysicalBone3D] = []
@@ -111,6 +120,7 @@ func run() -> void:
 	assert(environment.is_terminal())
 	assert(environment.has_failed())
 	assert(not environment.has_timed_out())
+	assert(environment.get_reward() == -1.0)
 	# Missing required physical joints must fail without fallback axes.
 	var missing: PhysicalBone3D = controller.axis_resolver._bodies["mixamorig_LeftLeg"]
 	ragdoll.bone_sim.remove_child(missing)

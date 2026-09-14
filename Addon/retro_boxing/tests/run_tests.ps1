@@ -31,6 +31,12 @@ try {
     if ($multiArena.ExitCode -ne 0 -or $multiArenaOutput -notmatch 'Multi-arena training tests passed' -or $multiArenaOutput -match 'SCRIPT ERROR:') {
         throw 'Multi-arena training tests failed or timed out.'
     }
+    $stress = Start-Process -FilePath (Get-Command godot).Source -ArgumentList '--headless --path . --log-file .godot/rl-stress-test.log --script Addon/retro_boxing/tests/rl_environment_stress_test.gd --quit-after 9000' -WindowStyle Hidden -Wait -PassThru
+    $stressOutput = Get-Content -LiteralPath .godot/rl-stress-test.log -Raw
+    Write-Host $stressOutput
+    if ($stress.ExitCode -ne 0 -or $stressOutput -notmatch 'RL environment stress tests passed' -or $stressOutput -match 'SCRIPT ERROR:') {
+        throw 'RL environment stress tests failed or timed out.'
+    }
     $actions = Start-Process -FilePath (Get-Command godot).Source -ArgumentList '--headless --path . --log-file .godot/balance-action-test.log --script Addon/retro_boxing/tests/balance_action_runtime_test.gd --quit-after 9000' -WindowStyle Hidden -Wait -PassThru
     $actionOutput = Get-Content -LiteralPath .godot/balance-action-test.log -Raw
     Write-Host $actionOutput

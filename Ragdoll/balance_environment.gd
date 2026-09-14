@@ -5,6 +5,7 @@ extends Node3D
 @onready var state_provider: BalanceStateProvider = $BalanceStateProvider
 @onready var balance_controller: BalanceController = $BalanceController
 @onready var episode: BalanceEpisode = $BalanceEpisode
+@onready var reward: BalanceReward = $BalanceReward
 @onready var ragdoll: ActiveRagdoll = $ActiveRagdoll
 var _original_gravity_scales: Dictionary = {}
 
@@ -20,7 +21,14 @@ func reset() -> void:
 func get_observation() -> PackedFloat32Array:
 	return state_provider.get_observation()
 
+func get_observation_size() -> int:
+	return state_provider.get_observation_size()
+
+func get_reward() -> float:
+	return reward.get_reward()
+
 func apply_action(action) -> void:
+	assert(action.size() == get_action_size(), "Action has the wrong size.")
 	balance_controller.apply_action(action)
 
 func get_action_size() -> int:

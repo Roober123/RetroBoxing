@@ -1,6 +1,12 @@
 class_name BalanceStateProvider
 extends Node
 
+const STANDING_HEIGHT := 1.0
+const LINEAR_VELOCITY_SCALE := 5.0
+const ANGULAR_VELOCITY_SCALE := 10.0
+const CHARACTER_SIZE_SCALE := 1.0
+const NORMALIZED_LIMIT := 5.0
+
 @export var ragdoll_path: NodePath = ^"../ActiveRagdoll"
 @onready var ragdoll: ActiveRagdoll = get_node(ragdoll_path)
 
@@ -74,23 +80,31 @@ func get_observation() -> PackedFloat32Array:
 		return observation
 	_append_vector(observation, state.pelvis_up)
 	_append_vector(observation, state.pelvis_forward)
-	_append_vector(observation, state.pelvis_angular_velocity)
-	_append_vector(observation, state.pelvis_linear_velocity)
-	observation.append(state.pelvis_height)
+	_append_vector(observation, _normalized_vector(state.pelvis_angular_velocity, ANGULAR_VELOCITY_SCALE))
+	_append_vector(observation, _normalized_vector(state.pelvis_linear_velocity, LINEAR_VELOCITY_SCALE))
+	observation.append(clampf(state.pelvis_height / STANDING_HEIGHT, -NORMALIZED_LIMIT, NORMALIZED_LIMIT))
 	for i in state.joint_rotations.size():
 		var rotation: Quaternion = state.joint_rotations[i]
 		if rotation.w < 0.0:
 			rotation = -rotation
 		observation.append_array(PackedFloat32Array([rotation.x, rotation.y, rotation.z, rotation.w]))
-		_append_vector(observation, state.joint_angular_velocities[i])
-	_append_vector(observation, state.left_foot_position)
-	_append_vector(observation, state.right_foot_position)
+		_append_vector(observation, _normalized_vector(state.joint_angular_velocities[i], ANGULAR_VELOCITY_SCALE))
+	_append_vector(observation, _normalized_vector(state.left_foot_position, CHARACTER_SIZE_SCALE))
+	_append_vector(observation, _normalized_vector(state.right_foot_position, CHARACTER_SIZE_SCALE))
 	observation.append(1.0 if state.left_foot_contact else 0.0)
 	observation.append(1.0 if state.right_foot_contact else 0.0)
-	_append_vector(observation, state.com_position)
-	_append_vector(observation, state.com_velocity)
-	_append_vector(observation, state.horizontal_com_offset)
+	_append_vector(observation, _normalized_vector(state.com_position, CHARACTER_SIZE_SCALE))
+	_append_vector(observation, _normalized_vector(state.com_velocity, LINEAR_VELOCITY_SCALE))
+	_append_vector(observation, _normalized_vector(state.horizontal_com_offset, CHARACTER_SIZE_SCALE))
+	assert(observation.size() == get_observation_size())
 	return observation
+
+func get_observation_size() -> int:
+	return 30 + ragdoll.pd_controller.get_joint_count() * 7
+
+func _normalized_vector(value: Vector3, scale: float) -> Vector3:
+	var normalized := value / scale
+	return Vector3(clampf(normalized.x, -NORMALIZED_LIMIT, NORMALIZED_LIMIT), clampf(normalized.y, -NORMALIZED_LIMIT, NORMALIZED_LIMIT), clampf(normalized.z, -NORMALIZED_LIMIT, NORMALIZED_LIMIT))
 
 func _body_for_name(bone_name: StringName) -> PhysicalBone3D:
 	return _bodies_by_id.get(ragdoll.skel.find_bone(bone_name))
