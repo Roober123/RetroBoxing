@@ -53,7 +53,7 @@ def main():
         if args.resume:
             model = PPO.load(args.resume, env=env, device="cpu", n_steps=512, gamma=0.997, gae_lambda=0.95)
         else:
-            model = PPO("MlpPolicy", env, n_steps=512, batch_size=64, gamma=0.997, gae_lambda=0.95,
+            model = PPO("MlpPolicy", env, n_steps=128, batch_size=256, gamma=0.997, gae_lambda=0.95,
                         verbose=1, seed=args.seed, device="cpu")
         model.set_logger(configure(args.log_dir, ["stdout", "csv", "tensorboard"]))
         model.learn(total_timesteps=args.timesteps, callback=EpisodeLogging(),

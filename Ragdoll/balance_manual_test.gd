@@ -61,7 +61,7 @@ func _print_selection() -> void:
 	print("Selected balance action: ", controller.get_action_names()[selected_action])
 
 func _set_gravity() -> void:
-	arena.set_gravity_scale(0.0 if gravity_free else 1.0)
+	arena.set_gravity_scale(0.0 if gravity_free else arena.get_gravity_scale())
 	print("Gravity-free verification: ", gravity_free)
 
 func _physics_process(delta: float) -> void:

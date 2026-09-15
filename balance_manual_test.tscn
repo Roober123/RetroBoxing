@@ -1,8 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene format=3 uid="uid://cjm8gcghphx2"]
 
 [ext_resource type="PackedScene" path="res://balance_training_arena.tscn" id="1"]
-[ext_resource type="Script" path="res://Ragdoll/balance_manual_test.gd" id="2"]
-[ext_resource type="Script" path="res://Ragdoll/ragdoll_debug_targets.gd" id="3"]
+[ext_resource type="Script" uid="uid://cdo4ubaxgds3d" path="res://Ragdoll/balance_manual_test.gd" id="2"]
+[ext_resource type="Script" uid="uid://bg356a873a64c" path="res://Ragdoll/ragdoll_debug_targets.gd" id="3"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMaterial"]
 
@@ -13,22 +13,27 @@ sky_material = SubResource("SkyMaterial")
 background_mode = 2
 sky = SubResource("Sky")
 
-[node name="BalanceManualTest" type="Node3D"]
+[node name="BalanceManualTest" type="Node3D" unique_id=1590496782]
 
-[node name="BalanceTrainingArena" parent="." instance=ExtResource("1")]
+[node name="BalanceTrainingArena" parent="." unique_id=962272902 instance=ExtResource("1")]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="CollisionShape3D" parent="BalanceTrainingArena/Ground" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1095106956]
 environment = SubResource("Environment")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-rotation_degrees = Vector3(-60, -150, 0)
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=433126033]
+transform = Transform3D(-0.8660254, 0.43301278, -0.25, 0, 0.49999997, 0.86602545, 0.50000006, 0.75, -0.43301266, 0, 0, 0)
 shadow_enabled = true
 
-[node name="Camera3D" type="Camera3D" parent="."]
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1097532610]
 transform = Transform3D(1, 0, 0, 0, 0.9491475, 0.31483176, 0, -0.31483176, 0.9491475, 0, 1.6788781, 2.4102225)
 
-[node name="ManualActionTest" type="Node" parent="."]
+[node name="ManualActionTest" type="Node" parent="." unique_id=329943352]
 script = ExtResource("2")
 
-[node name="DebugTargets" type="Node" parent="."]
+[node name="DebugTargets" type="Node" parent="." unique_id=1813573314]
 script = ExtResource("3")
+
+[editable path="BalanceTrainingArena"]
